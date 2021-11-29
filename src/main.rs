@@ -136,6 +136,24 @@ impl VM {
     fn programs(&mut self) {}
 }
 
+struct Pointer<'a, T> {
+    data: *mut T,
+    slice: &'a mut [T],
+}
+
+impl<'a, T> Pointer<'a, T> {
+    unsafe fn new() -> Pointer<'a, T> {
+        let data: *mut T = alloc::alloc(Layout::from_size_align_unchecked(
+            4096 * mem::size_of::<T>(),
+            mem::size_of::<T>(),
+        )) as *mut T;
+        Self {
+            data: data,
+            slice: slice::from_raw_parts_mut(data, 4096),
+        }
+    }
+}
+
 fn main() {
     // let args: Vec<String> = env::args().collect();
     // let filename = &args[1];
@@ -174,8 +192,6 @@ fn main() {
         slice[i] = Instruction::PUSH as u64;
         i += 1;
         slice[i] = Instruction::EXIT as u64;
-        //println!("0:{:?}", text);
-        //  println!("1:{:?}", text.add(1));
         let mut vm = VM {
             pc: text,
             sp: sp,
@@ -189,8 +205,4 @@ fn main() {
         vm.eval();
         println!("ax : {}", vm.ax);
     };
-
-    // let vm = VM { pc: &mut text *mut u64 };
-
-    //  println!("{}", filename);
 }
