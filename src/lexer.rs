@@ -1,12 +1,22 @@
 use std::io::{Bytes, Read};
 use std::iter::{Iterator, Peekable};
 
+pub enum KeyWord {}
+
 #[derive(Debug)]
 pub enum Token {
     Unknown, //
-    Num,     //
-    Plus,    //++
-    Add,     //+
+    Oper(Operator),
+}
+
+#[derive(Debug)]
+pub enum Operator {
+    Plus,     //++
+    Add,      //+
+    AddEqual, //+=
+    Sub,      //-
+    SubEqual, //-=
+    Minus,    //--
 }
 
 pub struct Lexer<R: Read> {
@@ -26,8 +36,12 @@ impl<R: Read> Lexer<R> {
         match self.peek() {
             Some(c) => match c {
                 b'+' => {
-                    self.next();
-                    return Some(Token::Plus);
+                    self.take();
+                    return Some(Token::Oper(Operator::Plus));
+                }
+                b'=' => {
+                    self.take();
+                    return Some(Token::AddEqual);
                 }
                 _ => Some(Token::Add),
             },
@@ -35,11 +49,28 @@ impl<R: Read> Lexer<R> {
         }
     }
 
+    fn parse_sub(&mut self) -> Option<Token> {
+        match self.peek() {
+            Some(c) => match c {
+                b'-' => {
+                    self.take();
+                    return Some(Token::Minus);
+                }
+                b'=' => {
+                    self.take();
+                    return Some(Token::SubEqual);
+                }
+                _ => Some(Token::Sub),
+            },
+            None => Some(Token::Sub),
+        }
+    }
+
     fn skip_space(&mut self) {
         while let Some(c) = self.peek() {
             match c {
                 b' ' => {
-                    self.next();
+                    self.take();
                     continue;
                 }
                 _ => return,
@@ -52,7 +83,10 @@ impl<R: Read> Lexer<R> {
             match c {
                 b'+' => return self.parse_add(),
                 b' ' => self.skip_space(),
-                b'\n' | b'\r' | b'\t' => {}
+                b'-' => return self.parse_sub(),
+                b'\n' | b'\r' | b'\t' => {
+                    self.line += 1;
+                }
                 _ => return Some(Token::Unknown),
             };
         }
@@ -64,6 +98,10 @@ impl<R: Read> Lexer<R> {
         // None => {}
 
         // println!("{}", c as char);
+    }
+
+    fn take(&mut self) {
+        let _ = self.peeker.next();
     }
 
     //获取下一个字符
@@ -82,3 +120,5 @@ impl<R: Read> Lexer<R> {
         }
     }
 }
+
+mod tests {}
