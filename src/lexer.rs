@@ -87,7 +87,10 @@ impl<R: Read> Lexer<R> {
                 b'=' => return self.parse_equal(),
                 b'*' => return self.take_token(Token::Oper(Operator::Star)),
                 b'/' => return self.parse_div(),
-                b'%'=>return self.
+                b'%' => return self.take_token(Token::Oper(Operator::Mod)),
+                b'&' => return self.take_token(Token::Oper(Operator::BitAnd)),
+                b'|' => return self.take_token(Token::Oper(Operator::BitOr)),
+                b'|' => return self.take_token(Token::Oper(Operator::BitOr)),
                 b'\n' | b'\r' | b'\t' => {
                     self.skip_line();
                 }
