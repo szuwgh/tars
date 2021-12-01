@@ -1,22 +1,64 @@
 use std::io::{Bytes, Read};
 use std::iter::{Iterator, Peekable};
 
-pub enum KeyWord {}
+type TokenResult = Result<Token, LexerError>;
+#[derive(Debug)]
+pub enum LexerError {
+    Eof,
+    Unterminated(String),
+    UnExpected,
+}
+
+pub enum KeyWord {
+    Int, // int
+    Fn,  // fn
+}
 
 #[derive(Debug)]
 pub enum Token {
     Unknown, //
     Oper(Operator),
+    Aide(Aides),
+    Ident(String),
+}
+
+#[derive(Debug)]
+pub enum Aides {
+    Dot,       // .
+    Comma,     // ,
+    Semicolon, // ;
+    Colon,     // :
+    Note,      // //
+    MultNote,  // /**/
 }
 
 #[derive(Debug)]
 pub enum Operator {
-    Plus,     //++
-    Add,      //+
-    AddEqual, //+=
-    Sub,      //-
-    SubEqual, //-=
-    Minus,    //--
+    Plus,          // ++
+    Add,           // +
+    AddEqual,      // +=
+    Sub,           // -
+    SubEqual,      // -=
+    Minus,         // --
+    Assign,        // =
+    Star,          // *
+    Div,           // /
+    Mod,           // %
+    BitAnd,        // &
+    BitOr,         // |
+    BitNot,        // ~
+    BitShiftRight, // >>
+    BitShiftLeft,  // <<
+    LogicAnd,      // &&
+    LogicOr,       // ||
+    LogicNot,      // !
+    Equal,         // ==
+    NotEqual,      // !=
+    Greate,        // >
+    GreateEqual,   // >=
+    Less,          // <
+    LessEqual,     // <=
+    Question,      // ?
 }
 
 pub struct Lexer<R: Read> {
@@ -32,40 +74,28 @@ impl<R: Read> Lexer<R> {
         }
     }
 
-    fn parse_add(&mut self) -> Option<Token> {
-        match self.peek() {
-            Some(c) => match c {
-                b'+' => {
-                    self.take();
-                    return Some(Token::Oper(Operator::Plus));
+    pub fn parse(&mut self) -> TokenResult {
+        while let Some(c) = self.next() {
+            match c {
+                b' ' => self.skip_space(),
+                b'.' => return self.take_token(Token::Aide(Aides::Dot)),
+                b',' => return self.take_token(Token::Aide(Aides::Comma)),
+                b';' => return self.take_token(Token::Aide(Aides::Semicolon)),
+                b':' => return self.take_token(Token::Aide(Aides::Colon)),
+                b'+' => return self.parse_add(),
+                b'-' => return self.parse_sub(),
+                b'=' => return self.parse_equal(),
+                b'*' => return self.take_token(Token::Oper(Operator::Star)),
+                b'/' => return self.parse_div(),
+                b'%'=>return self.
+                b'\n' | b'\r' | b'\t' => {
+                    self.skip_line();
                 }
-                b'=' => {
-                    self.take();
-                    return Some(Token::AddEqual);
-                }
-                _ => Some(Token::Add),
-            },
-            None => Some(Token::Add),
+                _ => return Ok(Token::Unknown),
+            };
         }
+        Err(LexerError::Eof)
     }
-
-    fn parse_sub(&mut self) -> Option<Token> {
-        match self.peek() {
-            Some(c) => match c {
-                b'-' => {
-                    self.take();
-                    return Some(Token::Minus);
-                }
-                b'=' => {
-                    self.take();
-                    return Some(Token::SubEqual);
-                }
-                _ => Some(Token::Sub),
-            },
-            None => Some(Token::Sub),
-        }
-    }
-
     fn skip_space(&mut self) {
         while let Some(c) = self.peek() {
             match c {
@@ -78,26 +108,104 @@ impl<R: Read> Lexer<R> {
         }
     }
 
-    pub fn parse(&mut self) -> Option<Token> {
+    fn parse_add(&mut self) -> TokenResult {
+        match self.peek() {
+            Some(c) => match c {
+                b'+' => {
+                    self.take();
+                    return Ok(Token::Oper(Operator::Plus));
+                }
+                b'=' => {
+                    self.take();
+                    return Ok(Token::Oper(Operator::AddEqual));
+                }
+                _ => Ok(Token::Oper(Operator::Add)),
+            },
+            None => Ok(Token::Oper(Operator::Add)),
+        }
+    }
+
+    fn parse_sub(&mut self) -> TokenResult {
+        match self.peek() {
+            Some(c) => match c {
+                b'-' => {
+                    self.take();
+                    return Ok(Token::Oper(Operator::Minus));
+                }
+                b'=' => {
+                    self.take();
+                    return Ok(Token::Oper(Operator::SubEqual));
+                }
+                _ => Ok(Token::Oper(Operator::Sub)),
+            },
+            None => Ok(Token::Oper(Operator::Sub)),
+        }
+    }
+
+    fn parse_equal(&mut self) -> TokenResult {
+        match self.peek() {
+            Some(b'=') => self.take_token(Token::Oper(Operator::Equal)),
+            _ => Ok(Token::Oper(Operator::Assign)),
+        }
+    }
+
+    fn parse_div(&mut self) -> TokenResult {
+        match self.peek() {
+            Some(c) => match c {
+                b'/' => self.parse_note(),
+                b'*' => self.parse_multnote(),
+                _ => Ok(Token::Oper(Operator::Div)),
+            },
+            None => Err(LexerError::UnExpected),
+        }
+    }
+
+    fn parse_note(&mut self) -> TokenResult {
+        self.take();
+        while let Some(b'\n') = self.next() {
+            break;
+        }
+        Ok(Token::Aide(Aides::Note))
+    }
+
+    fn parse_multnote(&mut self) -> TokenResult {
+        self.take();
         while let Some(c) = self.next() {
             match c {
-                b'+' => return self.parse_add(),
-                b' ' => self.skip_space(),
-                b'-' => return self.parse_sub(),
+                b'*' => {
+                    if let Some(b'/') = self.peek() {
+                        self.take();
+                        return Ok(Token::Aide(Aides::MultNote));
+                    }
+                    return Err(LexerError::Unterminated(
+                        "found '/*', no '*/' end ".to_owned(),
+                    ));
+                }
+                _ => continue,
+            }
+        }
+        Err(LexerError::Unterminated(
+            "found '/*', no '*/' end ".to_owned(),
+        ))
+    }
+
+    fn skip_line(&mut self) {
+        self.line += 1;
+        while let Some(c) = self.peek() {
+            match c {
                 b'\n' | b'\r' | b'\t' => {
                     self.line += 1;
+                    self.take();
+                    continue;
                 }
-                _ => return Some(Token::Unknown),
-            };
+                _ => return,
+            }
         }
-        return None;
+    }
 
-        // Some(c) => {
-        //     println!("{}", c as char);
-        // }
-        // None => {}
-
-        // println!("{}", c as char);
+    fn take_token(&mut self, t: Token) -> TokenResult {
+        self.take();
+        Ok(t)
     }
 
     fn take(&mut self) {
@@ -121,4 +229,21 @@ impl<R: Read> Lexer<R> {
     }
 }
 
-mod tests {}
+mod tests {
+    use super::*;
+    use std::fs::OpenOptions;
+    #[test]
+    fn test_lexer() {
+        let f = OpenOptions::new().read(true).open("./src/a.txt").unwrap();
+        let mut lexer = Lexer::new(f);
+        while let m = lexer.parse() {
+            match m {
+                Ok(c) => println!("{:?}", c),
+                Err(e) => {
+                    println!("{:?}", e);
+                    break;
+                }
+            }
+        }
+    }
+}

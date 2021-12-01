@@ -19,7 +19,7 @@ fn main() {
     let f = OpenOptions::new().read(true).open(&filename).unwrap();
     let mut lexer = Lexer::new(f);
 
-    while let Some(c) = lexer.parse() {
+    while let Ok(c) = lexer.parse() {
         println!("{:?}", c);
     }
     //  let size = 8192; // 256*1024/32
