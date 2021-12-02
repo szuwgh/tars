@@ -1,15 +1,10 @@
 mod lexer;
+mod parser;
 mod vm;
 
 use lexer::Lexer;
 use std::env;
 use std::fs::OpenOptions;
-
-struct Parser {}
-
-impl Parser {
-    fn expression(&mut self) {}
-}
 
 fn open(pathname: *mut u8) {}
 
@@ -19,7 +14,7 @@ fn main() {
     let f = OpenOptions::new().read(true).open(&filename).unwrap();
     let mut lexer = Lexer::new(f);
 
-    while let Ok(c) = lexer.parse() {
+    while let Ok(c) = lexer.lex() {
         println!("{:?}", c);
     }
     //  let size = 8192; // 256*1024/32

@@ -1,7 +1,22 @@
 use std::io::{Bytes, Read};
 use std::iter::{Iterator, Peekable};
 
-type TokenResult = Result<Token, LexerError>;
+pub type TokenResult = Result<Token, LexerError>;
+
+static KEY_WORD: &'static [(&'static str, KeyWord)] = &[
+    ("int", KeyWord::Int),
+    ("fn", KeyWord::Fn),
+    ("return", KeyWord::Return),
+];
+
+fn is_keyword(s: &str) -> Option<KeyWord> {
+    if let Some((_, k)) = KEY_WORD.iter().find(|(_s, _)| *_s == s) {
+        Some(*k)
+    } else {
+        None
+    }
+}
+
 #[derive(Debug)]
 pub enum LexerError {
     Eof,
@@ -9,17 +24,22 @@ pub enum LexerError {
     UnExpected,
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum KeyWord {
     Int, // int
     Fn,  // fn
+    Return,
 }
 
 #[derive(Debug)]
 pub enum Token {
     Unknown, //
+    KeyWord(KeyWord),
     Oper(Operator),
     Aide(Aides),
+    Str(String),
     Ident(String),
+    Number(isize),
 }
 
 #[derive(Debug)]
@@ -58,43 +78,56 @@ pub enum Operator {
     GreateEqual,   // >=
     Less,          // <
     LessEqual,     // <=
+    RightArrow,    // ->
+    LeftArrow,     // <-
     Question,      // ?
 }
 
-pub struct Lexer<R: Read> {
+pub struct DefaultLexer<R: Read> {
     peeker: Peekable<Bytes<R>>,
     line: u32,
 }
 
-impl<R: Read> Lexer<R> {
-    pub fn new(r: R) -> Lexer<R> {
-        Lexer {
+impl<R: Read> DefaultLexer<R> {
+    pub fn new(r: R) -> DefaultLexer<R> {
+        DefaultLexer {
             peeker: r.bytes().peekable(),
             line: 0,
         }
     }
 
-    pub fn parse(&mut self) -> TokenResult {
+    pub fn lex(&mut self) -> TokenResult {
         while let Some(c) = self.next() {
             match c {
+                b'\n' | b'\r' | b'\t' => self.skip_line(),
                 b' ' => self.skip_space(),
-                b'.' => return self.take_token(Token::Aide(Aides::Dot)),
-                b',' => return self.take_token(Token::Aide(Aides::Comma)),
-                b';' => return self.take_token(Token::Aide(Aides::Semicolon)),
-                b':' => return self.take_token(Token::Aide(Aides::Colon)),
+                b'.' => return Ok(Token::Aide(Aides::Dot)),
+                b',' => return Ok(Token::Aide(Aides::Comma)),
+                b';' => return Ok(Token::Aide(Aides::Semicolon)),
+                b':' => return Ok(Token::Aide(Aides::Colon)),
                 b'+' => return self.parse_add(),
                 b'-' => return self.parse_sub(),
                 b'=' => return self.parse_equal(),
-                b'*' => return self.take_token(Token::Oper(Operator::Star)),
+                b'"' => return self.parse_string(),
+                b'*' => return Ok(Token::Oper(Operator::Star)),
                 b'/' => return self.parse_div(),
-                b'%' => return self.take_token(Token::Oper(Operator::Mod)),
-                b'&' => return self.take_token(Token::Oper(Operator::BitAnd)),
-                b'|' => return self.take_token(Token::Oper(Operator::BitOr)),
-                b'|' => return self.take_token(Token::Oper(Operator::BitOr)),
-                b'\n' | b'\r' | b'\t' => {
-                    self.skip_line();
+                b'%' => return Ok(Token::Oper(Operator::Mod)),
+                b'&' => return self.parse_and(),
+                b'|' => return self.parse_or(),
+                b'~' => return Ok(Token::Oper(Operator::BitNot)),
+                b'>' => return self.parse_greate(),
+                b'<' => return self.parse_less(),
+                b'!' => return self.parse_excl(),
+                b'?' => return Ok(Token::Oper(Operator::Question)),
+                _ => {
+                    if c.is_ascii_alphabetic() || c == b'_' {
+                        return self.parse_varorkeyword(c);
+                    } else if c.is_ascii_digit() {
+                        return self.parse_num(c);
+                    } else {
+                        return Ok(Token::Unknown);
+                    }
                 }
-                _ => return Ok(Token::Unknown),
             };
         }
         Err(LexerError::Eof)
@@ -114,14 +147,8 @@ impl<R: Read> Lexer<R> {
     fn parse_add(&mut self) -> TokenResult {
         match self.peek() {
             Some(c) => match c {
-                b'+' => {
-                    self.take();
-                    return Ok(Token::Oper(Operator::Plus));
-                }
-                b'=' => {
-                    self.take();
-                    return Ok(Token::Oper(Operator::AddEqual));
-                }
+                b'+' => self.take_token(Token::Oper(Operator::Plus)),
+                b'=' => self.take_token(Token::Oper(Operator::AddEqual)),
                 _ => Ok(Token::Oper(Operator::Add)),
             },
             None => Ok(Token::Oper(Operator::Add)),
@@ -131,14 +158,9 @@ impl<R: Read> Lexer<R> {
     fn parse_sub(&mut self) -> TokenResult {
         match self.peek() {
             Some(c) => match c {
-                b'-' => {
-                    self.take();
-                    return Ok(Token::Oper(Operator::Minus));
-                }
-                b'=' => {
-                    self.take();
-                    return Ok(Token::Oper(Operator::SubEqual));
-                }
+                b'-' => self.take_token(Token::Oper(Operator::Minus)),
+                b'=' => self.take_token(Token::Oper(Operator::SubEqual)),
+                b'>' => self.take_token(Token::Oper(Operator::RightArrow)),
                 _ => Ok(Token::Oper(Operator::Sub)),
             },
             None => Ok(Token::Oper(Operator::Sub)),
@@ -163,6 +185,22 @@ impl<R: Read> Lexer<R> {
         }
     }
 
+    fn parse_and(&mut self) -> TokenResult {
+        if let Some(b'&') = self.peek() {
+            self.take_token(Token::Oper(Operator::LogicAnd))
+        } else {
+            Ok(Token::Oper(Operator::BitAnd))
+        }
+    }
+
+    fn parse_or(&mut self) -> TokenResult {
+        if let Some(b'|') = self.peek() {
+            self.take_token(Token::Oper(Operator::LogicOr))
+        } else {
+            Ok(Token::Oper(Operator::BitOr))
+        }
+    }
+
     fn parse_note(&mut self) -> TokenResult {
         self.take();
         while let Some(b'\n') = self.next() {
@@ -177,8 +215,7 @@ impl<R: Read> Lexer<R> {
             match c {
                 b'*' => {
                     if let Some(b'/') = self.peek() {
-                        self.take();
-                        return Ok(Token::Aide(Aides::MultNote));
+                        return self.take_token(Token::Aide(Aides::MultNote));
                     }
                     return Err(LexerError::Unterminated(
                         "found '/*', no '*/' end ".to_owned(),
@@ -190,6 +227,82 @@ impl<R: Read> Lexer<R> {
         Err(LexerError::Unterminated(
             "found '/*', no '*/' end ".to_owned(),
         ))
+    }
+
+    fn parse_greate(&mut self) -> TokenResult {
+        match self.peek() {
+            Some(c) => match c {
+                b'>' => self.take_token(Token::Oper(Operator::BitShiftRight)),
+                b'=' => self.take_token(Token::Oper(Operator::GreateEqual)),
+                _ => self.take_token(Token::Oper(Operator::Greate)),
+            },
+            None => self.take_token(Token::Oper(Operator::Greate)),
+        }
+    }
+
+    fn parse_less(&mut self) -> TokenResult {
+        match self.peek() {
+            Some(c) => match c {
+                b'<' => self.take_token(Token::Oper(Operator::BitShiftLeft)),
+                b'=' => self.take_token(Token::Oper(Operator::LessEqual)),
+                b'-' => self.take_token(Token::Oper(Operator::LeftArrow)),
+                _ => self.take_token(Token::Oper(Operator::Less)),
+            },
+            None => self.take_token(Token::Oper(Operator::Less)),
+        }
+    }
+
+    fn parse_excl(&mut self) -> TokenResult {
+        if let Some(b'=') = self.peek() {
+            self.take_token(Token::Oper(Operator::NotEqual))
+        } else {
+            Ok(Token::Oper(Operator::LogicNot))
+        }
+    }
+
+    fn parse_string(&mut self) -> TokenResult {
+        let mut s = String::new();
+        while let Some(c) = self.next() {
+            match c {
+                b'"' => return Ok(Token::Str(s)),
+                _ => s.push(c as char),
+            }
+        }
+        Err(LexerError::Unterminated(
+            "found '\"', no '\"' end ".to_owned(),
+        ))
+    }
+
+    fn parse_varorkeyword(&mut self, c: u8) -> TokenResult {
+        let mut s = String::new();
+        s.push(c as char);
+        while let Some(c) = self.peek() {
+            if c.is_ascii_alphabetic() {
+                s.push(c as char);
+                self.take();
+            } else {
+                break;
+            }
+        }
+        if let Some(k) = is_keyword(s.as_str()) {
+            Ok(Token::KeyWord(k))
+        } else {
+            Ok(Token::Ident(s))
+        }
+    }
+
+    fn parse_num(&mut self, c: u8) -> TokenResult {
+        let mut s = String::new();
+        s.push(c as char);
+        while let Some(c) = self.peek() {
+            if c.is_ascii_digit() {
+                s.push(c as char);
+                self.take();
+            } else {
+                break;
+            }
+        }
+        Ok(Token::Number(s.parse::<isize>().unwrap()))
     }
 
     fn skip_line(&mut self) {
@@ -239,7 +352,8 @@ mod tests {
     fn test_lexer() {
         let f = OpenOptions::new().read(true).open("./src/a.txt").unwrap();
         let mut lexer = Lexer::new(f);
-        while let m = lexer.parse() {
+        loop {
+            let m = lexer.lex();
             match m {
                 Ok(c) => println!("{:?}", c),
                 Err(e) => {
