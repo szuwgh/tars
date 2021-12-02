@@ -351,7 +351,7 @@ mod tests {
     #[test]
     fn test_lexer() {
         let f = OpenOptions::new().read(true).open("./src/a.txt").unwrap();
-        let mut lexer = Lexer::new(f);
+        let mut lexer = DefaultLexer::new(f);
         loop {
             let m = lexer.lex();
             match m {
