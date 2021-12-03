@@ -1,8 +1,8 @@
+mod ast;
 mod lexer;
 mod parser;
 mod vm;
-
-use lexer::Lexer;
+use lexer::DefaultLexer;
 use std::env;
 use std::fs::OpenOptions;
 
@@ -12,7 +12,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let filename = &args[1];
     let f = OpenOptions::new().read(true).open(&filename).unwrap();
-    let mut lexer = Lexer::new(f);
+    let mut lexer = DefaultLexer::new(f);
 
     while let Ok(c) = lexer.lex() {
         println!("{:?}", c);

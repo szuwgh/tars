@@ -1,7 +1,7 @@
 use std::io::{Bytes, Read};
 use std::iter::{Iterator, Peekable};
 
-pub type TokenResult = Result<Token, LexerError>;
+pub type LexResult = Result<Token, LexerError>;
 
 static KEY_WORD: &'static [(&'static str, KeyWord)] = &[
     ("int", KeyWord::Int),
@@ -26,9 +26,20 @@ pub enum LexerError {
 
 #[derive(Debug, Clone, Copy)]
 pub enum KeyWord {
-    Int, // int
-    Fn,  // fn
+    Int,   // int
+    Float, // float
+    Fn,    // fn
     Return,
+}
+
+impl KeyWord {
+    pub fn is_type(&self) -> bool {
+        match self {
+            KeyWord::Int => true,
+            KeyWord::Float => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -96,7 +107,7 @@ impl<R: Read> DefaultLexer<R> {
         }
     }
 
-    pub fn lex(&mut self) -> TokenResult {
+    pub fn lex(&mut self) -> LexResult {
         while let Some(c) = self.next() {
             match c {
                 b'\n' | b'\r' | b'\t' => self.skip_line(),
@@ -144,7 +155,7 @@ impl<R: Read> DefaultLexer<R> {
         }
     }
 
-    fn parse_add(&mut self) -> TokenResult {
+    fn parse_add(&mut self) -> LexResult {
         match self.peek() {
             Some(c) => match c {
                 b'+' => self.take_token(Token::Oper(Operator::Plus)),
@@ -155,7 +166,7 @@ impl<R: Read> DefaultLexer<R> {
         }
     }
 
-    fn parse_sub(&mut self) -> TokenResult {
+    fn parse_sub(&mut self) -> LexResult {
         match self.peek() {
             Some(c) => match c {
                 b'-' => self.take_token(Token::Oper(Operator::Minus)),
@@ -167,14 +178,14 @@ impl<R: Read> DefaultLexer<R> {
         }
     }
 
-    fn parse_equal(&mut self) -> TokenResult {
+    fn parse_equal(&mut self) -> LexResult {
         match self.peek() {
             Some(b'=') => self.take_token(Token::Oper(Operator::Equal)),
             _ => Ok(Token::Oper(Operator::Assign)),
         }
     }
 
-    fn parse_div(&mut self) -> TokenResult {
+    fn parse_div(&mut self) -> LexResult {
         match self.peek() {
             Some(c) => match c {
                 b'/' => self.parse_note(),
@@ -185,7 +196,7 @@ impl<R: Read> DefaultLexer<R> {
         }
     }
 
-    fn parse_and(&mut self) -> TokenResult {
+    fn parse_and(&mut self) -> LexResult {
         if let Some(b'&') = self.peek() {
             self.take_token(Token::Oper(Operator::LogicAnd))
         } else {
@@ -193,7 +204,7 @@ impl<R: Read> DefaultLexer<R> {
         }
     }
 
-    fn parse_or(&mut self) -> TokenResult {
+    fn parse_or(&mut self) -> LexResult {
         if let Some(b'|') = self.peek() {
             self.take_token(Token::Oper(Operator::LogicOr))
         } else {
@@ -201,7 +212,7 @@ impl<R: Read> DefaultLexer<R> {
         }
     }
 
-    fn parse_note(&mut self) -> TokenResult {
+    fn parse_note(&mut self) -> LexResult {
         self.take();
         while let Some(b'\n') = self.next() {
             break;
@@ -209,7 +220,7 @@ impl<R: Read> DefaultLexer<R> {
         Ok(Token::Aide(Aides::Note))
     }
 
-    fn parse_multnote(&mut self) -> TokenResult {
+    fn parse_multnote(&mut self) -> LexResult {
         self.take();
         while let Some(c) = self.next() {
             match c {
@@ -229,7 +240,7 @@ impl<R: Read> DefaultLexer<R> {
         ))
     }
 
-    fn parse_greate(&mut self) -> TokenResult {
+    fn parse_greate(&mut self) -> LexResult {
         match self.peek() {
             Some(c) => match c {
                 b'>' => self.take_token(Token::Oper(Operator::BitShiftRight)),
@@ -240,7 +251,7 @@ impl<R: Read> DefaultLexer<R> {
         }
     }
 
-    fn parse_less(&mut self) -> TokenResult {
+    fn parse_less(&mut self) -> LexResult {
         match self.peek() {
             Some(c) => match c {
                 b'<' => self.take_token(Token::Oper(Operator::BitShiftLeft)),
@@ -252,7 +263,7 @@ impl<R: Read> DefaultLexer<R> {
         }
     }
 
-    fn parse_excl(&mut self) -> TokenResult {
+    fn parse_excl(&mut self) -> LexResult {
         if let Some(b'=') = self.peek() {
             self.take_token(Token::Oper(Operator::NotEqual))
         } else {
@@ -260,7 +271,7 @@ impl<R: Read> DefaultLexer<R> {
         }
     }
 
-    fn parse_string(&mut self) -> TokenResult {
+    fn parse_string(&mut self) -> LexResult {
         let mut s = String::new();
         while let Some(c) = self.next() {
             match c {
@@ -273,7 +284,7 @@ impl<R: Read> DefaultLexer<R> {
         ))
     }
 
-    fn parse_varorkeyword(&mut self, c: u8) -> TokenResult {
+    fn parse_varorkeyword(&mut self, c: u8) -> LexResult {
         let mut s = String::new();
         s.push(c as char);
         while let Some(c) = self.peek() {
@@ -291,7 +302,7 @@ impl<R: Read> DefaultLexer<R> {
         }
     }
 
-    fn parse_num(&mut self, c: u8) -> TokenResult {
+    fn parse_num(&mut self, c: u8) -> LexResult {
         let mut s = String::new();
         s.push(c as char);
         while let Some(c) = self.peek() {
@@ -319,7 +330,7 @@ impl<R: Read> DefaultLexer<R> {
         }
     }
 
-    fn take_token(&mut self, t: Token) -> TokenResult {
+    fn take_token(&mut self, t: Token) -> LexResult {
         self.take();
         Ok(t)
     }
