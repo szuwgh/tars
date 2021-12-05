@@ -42,7 +42,7 @@ impl KeyWord {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Token {
     Unknown, //
     KeyWord(KeyWord),
@@ -51,6 +51,7 @@ pub enum Token {
     Str(String),
     Ident(String),
     Number(isize),
+    Eof,
 }
 
 #[derive(Debug)]
@@ -141,7 +142,8 @@ impl<R: Read> DefaultLexer<R> {
                 }
             };
         }
-        Err(LexerError::Eof)
+        Ok(Token::Eof)
+        //Err(LexerError::Eof)
     }
     fn skip_space(&mut self) {
         while let Some(c) = self.peek() {
