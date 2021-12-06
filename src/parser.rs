@@ -30,7 +30,11 @@ impl<L: lexer> Parser<L> {
         loop {
             match self.tok {
                 Token::Eof => break,
-                _ => self.parse_global_declaration(),
+                _ => {
+                    if let Some(value_spec) = self.parse_global_declaration() {
+                        gro_decl.list.push(value_spec);
+                    }
+                }
             }
         }
         None

@@ -24,7 +24,7 @@ pub enum LexerError {
     UnExpected,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy，PartialEq)]
 pub enum KeyWord {
     Int,   // int
     Float, // float
@@ -54,7 +54,7 @@ pub enum Token {
     Eof,
 }
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq)]
 pub enum Aides {
     Dot,       // .
     Comma,     // ,
@@ -64,7 +64,7 @@ pub enum Aides {
     MultNote,  // /**/
 }
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq)]
 pub enum Operator {
     Plus,          // ++
     Add,           // +
