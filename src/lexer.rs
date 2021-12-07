@@ -24,7 +24,7 @@ pub enum LexerError {
     UnExpected,
 }
 
-#[derive(Debug, Clone, Copy，PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum KeyWord {
     Int,   // int
     Float, // float
@@ -42,7 +42,7 @@ impl KeyWord {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Unknown, //
     KeyWord(KeyWord),
@@ -54,7 +54,7 @@ pub enum Token {
     Eof,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Aides {
     Dot,       // .
     Comma,     // ,
@@ -64,7 +64,7 @@ pub enum Aides {
     MultNote,  // /**/
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Operator {
     Plus,          // ++
     Add,           // +
@@ -95,20 +95,17 @@ pub enum Operator {
     Question,      // ?
 }
 
+pub trait lexer {
+    fn lex(&mut self) -> LexResult;
+}
+
 pub struct DefaultLexer<R: Read> {
     peeker: Peekable<Bytes<R>>,
     line: u32,
 }
 
-impl<R: Read> DefaultLexer<R> {
-    pub fn new(r: R) -> DefaultLexer<R> {
-        DefaultLexer {
-            peeker: r.bytes().peekable(),
-            line: 0,
-        }
-    }
-
-    pub fn lex(&mut self) -> LexResult {
+impl<R: Read> lexer for DefaultLexer<R> {
+    fn lex(&mut self) -> LexResult {
         while let Some(c) = self.next() {
             match c {
                 b'\n' | b'\r' | b'\t' => self.skip_line(),
@@ -142,9 +139,19 @@ impl<R: Read> DefaultLexer<R> {
                 }
             };
         }
-        Ok(Token::Eof)
-        //Err(LexerError::Eof)
+        // Ok(Token::Eof)
+        Err(LexerError::Eof)
     }
+}
+
+impl<R: Read> DefaultLexer<R> {
+    pub fn new(r: R) -> DefaultLexer<R> {
+        DefaultLexer {
+            peeker: r.bytes().peekable(),
+            line: 0,
+        }
+    }
+
     fn skip_space(&mut self) {
         while let Some(c) = self.peek() {
             match c {
@@ -363,8 +370,40 @@ mod tests {
     use std::fs::OpenOptions;
     #[test]
     fn test_lexer() {
-        let f = OpenOptions::new().read(true).open("./src/a.txt").unwrap();
-        let mut lexer = DefaultLexer::new(f);
+        let s = "
+        +~+=-
+        --
+        ->
+        -=
+        =
+        ==
+        ,
+        .
+        ;
+        :
+        %
+        //
+        /*ff*/
+        >>
+        >
+        >=
+        <<
+        <=
+        <-
+        &
+        &&
+        |
+        ||
+        !
+        !=
+        ?
+        \"aaaa\"
+        \"bbbb\"
+        int
+        Okk
+        123
+        567";
+        let mut lexer = DefaultLexer::new(s.as_bytes());
         loop {
             let m = lexer.lex();
             match m {

@@ -9,14 +9,14 @@ use std::fs::OpenOptions;
 fn open(pathname: *mut u8) {}
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    let filename = &args[1];
-    let f = OpenOptions::new().read(true).open(&filename).unwrap();
-    let mut lexer = DefaultLexer::new(f);
+    // let args: Vec<String> = env::args().collect();
+    // let filename = &args[1];
+    // let f = OpenOptions::new().read(true).open(&filename).unwrap();
+    // let mut lexer = DefaultLexer::new(f);
 
-    while let Ok(c) = lexer.lex() {
-        println!("{:?}", c);
-    }
+    // while let Ok(c) = lexer.lex() {
+    //     println!("{:?}", c);
+    // }
     //  let size = 8192; // 256*1024/32
     // unsafe {
     //     let text: *mut u64 = alloc::alloc(Layout::from_size_align_unchecked(

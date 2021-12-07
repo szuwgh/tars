@@ -1,5 +1,6 @@
 use crate::ast;
 use crate::ast::AST;
+use crate::lexer::lexer;
 use crate::lexer::Aides;
 use crate::lexer::DefaultLexer;
 use crate::lexer::KeyWord;
@@ -14,10 +15,6 @@ pub enum ParseError {
     NoFoundIdent,
 }
 
-pub trait lexer {
-    fn next(&mut self) -> LexResult;
-}
-
 struct Parser<L: lexer> {
     lex: L,
     tok: Token,
@@ -25,13 +22,22 @@ struct Parser<L: lexer> {
 }
 
 impl<L: lexer> Parser<L> {
+    pub fn new(l: L) -> Parser<L> {
+        Self {
+            lex: l,
+            tok: Token::Eof,
+        }
+    }
     fn parse(&mut self) -> Option<AST> {
-        let gro_decl = ast::GlobalDecl { list: Vec::new() };
+        self.next();
+        let mut gro_decl = ast::GlobalDecl { list: Vec::new() };
         loop {
             match self.tok {
                 Token::Eof => break,
                 _ => {
+                    println!("parse");
                     if let Some(value_spec) = self.parse_global_declaration() {
+                        println!("{:?}", value_spec);
                         gro_decl.list.push(value_spec);
                     }
                 }
@@ -41,7 +47,7 @@ impl<L: lexer> Parser<L> {
     }
 
     fn next(&mut self) {
-        if let Ok(t) = self.lex.next() {
+        if let Ok(t) = self.lex.lex() {
             self.tok = t
         } else {
             self.tok = Token::Eof;
@@ -77,10 +83,10 @@ impl<L: lexer> Parser<L> {
 
     fn parse_variable_list(&mut self) -> Option<Vec<ast::Ident>> {
         let mut list: Vec<ast::Ident> = Vec::new();
-        if let Ok(Token::Ident(s)) = self.parse_identifier() {
+        if let Some(s) = self.parse_identifier() {
             list.push(ast::Ident { name: s });
         }
-        if let Token::Aide(Aides::Comma) = self.tok {
+        if self.expect_token(Token::Aide(Aides::Comma)) {
             if let Some(mut i) = self.parse_variable_list() {
                 list.append(&mut i);
             }
@@ -88,12 +94,12 @@ impl<L: lexer> Parser<L> {
         Some(list)
     }
 
-    fn parse_identifier(&mut self) -> ParseResult {
-        if let Token::Ident(s) = self.tok {
+    fn parse_identifier(&mut self) -> Option<String> {
+        if let Token::Ident(s) = self.tok.clone() {
             self.next();
-            return Ok(Token::Ident(s));
+            return Some(s);
         }
-        Err(ParseError::NoFoundIdent)
+        None
     }
 
     fn parse_type(&mut self) -> ParseResult {
@@ -112,17 +118,20 @@ mod tests {
     use std::fs::OpenOptions;
     #[test]
     fn test_parser() {
-        let f = OpenOptions::new().read(true).open("./src/a.txt").unwrap();
-        let mut lexer = DefaultLexer::new(f);
-        loop {
-            let m = lexer.lex();
-            match m {
-                Ok(c) => println!("{:?}", c),
-                Err(e) => {
-                    println!("{:?}", e);
-                    break;
-                }
-            }
-        }
+        let s = "
+        int a,b;";
+        let mut lexer = DefaultLexer::new(s.as_bytes());
+        let mut parser = Parser::new(lexer);
+        parser.parse();
+        // loop {
+        //     let m = lexer.lex();
+        //     match m {
+        //         Ok(c) => println!("{:?}", c),
+        //         Err(e) => {
+        //             println!("{:?}", e);
+        //             break;
+        //         }
+        //     }
+        // }
     }
 }
