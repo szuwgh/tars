@@ -7,6 +7,8 @@ pub struct GlobalDecl {
     pub list: Vec<ValueSepc>,
 }
 
+pub struct FuncDecl {}
+
 #[derive(Debug)]
 pub struct Ident {
     pub name: String,

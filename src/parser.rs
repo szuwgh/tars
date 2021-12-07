@@ -58,6 +58,10 @@ impl<L: lexer> Parser<L> {
         return self.parse_var_define();
     }
 
+    fn parse_function_declaration(&mut self) -> Option<ast::FuncDecl> {
+        None
+    }
+
     // variable_decl ::= type {'*'} id { ',' {'*'} id } ';'
     fn parse_var_define(&mut self) -> Option<ast::ValueSepc> {
         if let Ok(Token::KeyWord(t)) = self.parse_type() {
