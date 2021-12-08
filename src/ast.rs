@@ -7,7 +7,10 @@ pub struct GlobalDecl {
     pub list: Vec<ValueSepc>,
 }
 
-pub struct FuncDecl {}
+pub struct FuncDecl {
+    pub typ: KeyWord,
+    pub name: String,
+}
 
 #[derive(Debug)]
 pub struct Ident {

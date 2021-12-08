@@ -6,7 +6,7 @@ use crate::lexer::DefaultLexer;
 use crate::lexer::KeyWord;
 use crate::lexer::LexResult;
 use crate::lexer::Token;
-pub type ParseResult = Result<Token, ParseError>;
+pub type ParseResult<T> = Result<T, ParseError>;
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -28,7 +28,7 @@ impl<L: lexer> Parser<L> {
             tok: Token::Eof,
         }
     }
-    fn parse(&mut self) -> Option<AST> {
+    fn parse(&mut self) -> ParseResult<AST> {
         self.next();
         let mut gro_decl = ast::GlobalDecl { list: Vec::new() };
         loop {
@@ -36,14 +36,14 @@ impl<L: lexer> Parser<L> {
                 Token::Eof => break,
                 Token::KeyWord(KeyWord::Var) => {
                     println!("parse var");
-                    if let Some(value_spec) = self.parse_global_declaration() {
+                    if let Ok(value_spec) = self.parse_global_declaration() {
                         println!("{:?}", value_spec);
                         gro_decl.list.push(value_spec);
                     }
                 }
                 Token::KeyWord(KeyWord::Fn) => {
                     println!("parse fn");
-                    if let Some(value_spec) = self.parse_global_declaration() {
+                    if let Ok(value_spec) = self.parse_global_declaration() {
                         println!("{:?}", value_spec);
                         gro_decl.list.push(value_spec);
                     }
@@ -51,7 +51,7 @@ impl<L: lexer> Parser<L> {
                 _ => {}
             }
         }
-        None
+        Err(ParseError::Eof)
     }
 
     fn next(&mut self) {
@@ -62,34 +62,36 @@ impl<L: lexer> Parser<L> {
         }
     }
 
-    fn parse_global_declaration(&mut self) -> Option<ast::ValueSepc> {
+    fn parse_global_declaration(&mut self) -> ParseResult<ast::ValueSepc> {
         self.next();
         return self.parse_var_define();
     }
 
-    fn parse_function_declaration(&mut self) -> Option<ast::FuncDecl> {
+    fn parse_function_declaration(&mut self) -> ParseResult<ast::FuncDecl> {
         self.next();
-        None
+        Err(ParseError::Eof)
     }
 
     fn parse_function_define(&mut self) {
-      self.parse_type().and_then(||)
-        if let Some(s) = self.parse_identifier() {}
+        self.parse_type().and_then(|t| {
+            self.parse_identifier()
+                .and_then(|s| Ok(ast::FuncDecl { typ: t, name: s }))
+        });
     }
 
     // variable_decl ::= type {'*'} id { ',' {'*'} id } ';'
-    fn parse_var_define(&mut self) -> Option<ast::ValueSepc> {
-        if let Ok(Token::KeyWord(t)) = self.parse_type() {
-            if let Some(idents) = self.parse_variable_list() {
+    fn parse_var_define(&mut self) -> ParseResult<ast::ValueSepc> {
+        if let Ok(t) = self.parse_type() {
+            if let Ok(idents) = self.parse_variable_list() {
                 if self.expect_token(Token::Aide(Aides::Semicolon)) {
-                    return Some(ast::ValueSepc {
+                    return Ok(ast::ValueSepc {
                         names: idents,
                         typ: t,
                     });
                 }
             }
         }
-        None
+        Err(ParseError::Eof)
     }
 
     fn expect_token(&mut self, t: Token) -> bool {
@@ -100,35 +102,35 @@ impl<L: lexer> Parser<L> {
         false
     }
 
-    fn parse_variable_list(&mut self) -> Option<Vec<ast::Ident>> {
+    fn parse_variable_list(&mut self) -> ParseResult<Vec<ast::Ident>> {
         let mut list: Vec<ast::Ident> = Vec::new();
-        if let Some(s) = self.parse_identifier() {
+        if let Ok(s) = self.parse_identifier() {
             list.push(ast::Ident { name: s });
         }
         if self.expect_token(Token::Aide(Aides::Comma)) {
-            if let Some(mut i) = self.parse_variable_list() {
+            if let Ok(mut i) = self.parse_variable_list() {
                 list.append(&mut i);
             }
         }
-        Some(list)
+        Ok(list)
     }
 
-    fn parse_identifier(&mut self) -> Option<String> {
+    fn parse_identifier(&mut self) -> ParseResult<String> {
         if let Token::Ident(s) = self.tok.clone() {
             self.next();
-            return Some(s);
+            return Ok(s);
         }
-        None
+        None+
     }
 
-    fn parse_type(&mut self) -> ParseResult {
+    fn parse_type(&mut self) -> ParseResult<KeyWord> {
         if let Token::KeyWord(k) = self.tok {
             if k.is_type() {
                 self.next();
-                return Ok(Token::KeyWord(k));
+                return Ok(k);
             }
         }
-        Err(ParseError::NoFoundType)
+        Err(ParseError::Eof)
     }
 }
 
