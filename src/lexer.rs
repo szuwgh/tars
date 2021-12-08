@@ -5,6 +5,8 @@ pub type LexResult = Result<Token, LexerError>;
 
 static KEY_WORD: &'static [(&'static str, KeyWord)] = &[
     ("int", KeyWord::Int),
+    ("float", KeyWord::Float),
+    ("var", KeyWord::Var),
     ("fn", KeyWord::Fn),
     ("return", KeyWord::Return),
 ];
@@ -28,7 +30,8 @@ pub enum LexerError {
 pub enum KeyWord {
     Int,   // int
     Float, // float
-    Fn,    // fn
+    Var,
+    Fn, // fn
     Return,
 }
 
