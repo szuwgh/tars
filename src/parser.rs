@@ -34,13 +34,21 @@ impl<L: lexer> Parser<L> {
         loop {
             match self.tok {
                 Token::Eof => break,
-                _ => {
-                    println!("parse");
+                Token::KeyWord(KeyWord::Var) => {
+                    println!("parse var");
                     if let Some(value_spec) = self.parse_global_declaration() {
                         println!("{:?}", value_spec);
                         gro_decl.list.push(value_spec);
                     }
                 }
+                Token::KeyWord(KeyWord::Fn) => {
+                    println!("parse fn");
+                    if let Some(value_spec) = self.parse_global_declaration() {
+                        println!("{:?}", value_spec);
+                        gro_decl.list.push(value_spec);
+                    }
+                }
+                _ => {}
             }
         }
         None
@@ -55,11 +63,18 @@ impl<L: lexer> Parser<L> {
     }
 
     fn parse_global_declaration(&mut self) -> Option<ast::ValueSepc> {
+        self.next();
         return self.parse_var_define();
     }
 
     fn parse_function_declaration(&mut self) -> Option<ast::FuncDecl> {
+        self.next();
         None
+    }
+
+    fn parse_function_define(&mut self) {
+      self.parse_type().and_then(||)
+        if let Some(s) = self.parse_identifier() {}
     }
 
     // variable_decl ::= type {'*'} id { ',' {'*'} id } ';'
