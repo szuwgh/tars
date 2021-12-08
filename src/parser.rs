@@ -36,7 +36,7 @@ impl<L: lexer> Parser<L> {
                 Token::Eof => break,
                 _ => {
                     println!("parse");
-                    if let Some(value_spec) = self.parse_global_declaration() {
+                    if let Some(value_spec) = self.parse_declaration() {
                         println!("{:?}", value_spec);
                         gro_decl.list.push(value_spec);
                     }
@@ -54,7 +54,7 @@ impl<L: lexer> Parser<L> {
         }
     }
 
-    fn parse_global_declaration(&mut self) -> Option<ast::ValueSepc> {
+    fn parse_declaration(&mut self) -> Option<ast::ValueSepc> {
         return self.parse_var_define();
     }
 
@@ -66,11 +66,12 @@ impl<L: lexer> Parser<L> {
     fn parse_var_define(&mut self) -> Option<ast::ValueSepc> {
         if let Ok(Token::KeyWord(t)) = self.parse_type() {
             if let Some(idents) = self.parse_variable_list() {
-                if self.expect_token(Token::Aide(Aides::Semicolon)) {
+                if idents.len() > 1 && self.expect_token(Token::Aide(Aides::Semicolon)) {
                     return Some(ast::ValueSepc {
                         names: idents,
                         typ: t,
                     });
+                } else {
                 }
             }
         }
