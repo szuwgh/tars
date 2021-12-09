@@ -16,6 +16,7 @@ pub enum ParseError {
     NoFoundIdent,
     NoSemicolon,
     NoLeftBrace,
+    NoLeftParen,
 }
 
 struct Parser<L: lexer> {
@@ -82,13 +83,31 @@ impl<L: lexer> Parser<L> {
     fn parse_function_define(&mut self) -> ParseResult<ast::FuncDecl> {
         self.parse_type().and_then(|t| {
             self.parse_identifier().and_then(|s| {
-                if !self.expect_token(Token::Oper(Operator::LeftBrace)) {
+                if !self.expect_token(Token::Oper(Operator::LeftParen)) {
                     return Err(ParseError::NoLeftBrace);
                 }
+
                 Ok(ast::FuncDecl { typ: t, name: s })
             })
         })
     }
+
+    fn parse_param_list(&mut self) -> ParseResult<Vec<ast::Param>> {
+        let mut list: Vec<ast::Param> = Vec::new();
+        match self.parse_fn_param() {
+            Ok(s) => list.push(ast::Ident { name: s }),
+            Err(e) => return Err(e),
+        }
+        if self.expect_token(Token::Aide(Aides::Comma)) {
+            match self.parse_param_list() {
+                Ok(mut i) => list.append(&mut i),
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(list)
+    }
+
+    fn parse_fn_param(&mut self) -> ParseResult<ast::Param> {}
 
     // variable_decl ::= type {'*'} id { ',' {'*'} id } ';'
     fn parse_var_define(&mut self) -> ParseResult<ast::ValueSepc> {

@@ -9,7 +9,13 @@ pub struct GlobalDecl {
 
 pub struct FuncDecl {
     pub typ: KeyWord,
-    pub name: String,
+    pub fn_name: String,
+    pub param: Vec<Param>,
+}
+
+pub struct Param {
+    pub ident: String,
+    pub typ: KeyWord,
 }
 
 #[derive(Debug)]
