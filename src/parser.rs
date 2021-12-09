@@ -14,9 +14,7 @@ pub enum ParseError {
     Eof,
     NoFoundType,
     NoFoundIdent,
-    NoSemicolon,
-    NoLeftBrace,
-    NoLeftParen,
+    Expect(Token),
 }
 
 struct Parser<L: lexer> {
@@ -50,9 +48,9 @@ impl<L: lexer> Parser<L> {
                 }
                 Token::KeyWord(KeyWord::Fn) => {
                     println!("parse fn");
-                    if let Ok(value_spec) = self.parse_global_declaration() {
-                        println!("{:?}", value_spec);
-                        gro_decl.list.push(value_spec);
+                    if let Ok(fn_spec) = self.parse_global_declaration() {
+                        println!("{:?}", fn_spec);
+                        gro_decl.list.push(fn_spec);
                     }
                 }
                 _ => break,
@@ -83,32 +81,48 @@ impl<L: lexer> Parser<L> {
     fn parse_function_define(&mut self) -> ParseResult<ast::FuncDecl> {
         self.parse_type().and_then(|t| {
             self.parse_identifier().and_then(|s| {
-                if !self.expect_token(Token::Oper(Operator::LeftParen)) {
-                    return Err(ParseError::NoLeftBrace);
+                self.expect_token(Token::Oper(Operator::LeftParen))?;
+                let mut params: Vec<ast::Param> = Vec::new();
+                if !self.match_token(Token::Oper(Operator::RightParen)) {
+                    params = self.parse_param_list()?;
                 }
-                if 
-
-                Ok(ast::FuncDecl { typ: t, name: s })
+                self.expect_token(Token::Oper(Operator::RightParen))?;
+                self.expect_token(Token::Oper(Operator::LeftBrace))?;
+                self.expect_token(Token::Oper(Operator::RightBrace))?;
+                Ok(ast::FuncDecl {
+                    typ: t,
+                    fn_name: s,
+                    params: params,
+                })
             })
         })
     }
 
+    //  let params: Vec<ast::Param>;
+    //     if !self.match_token(Token::Oper(Operator::RightParen)) {
+    //         self.parse_param_list()
+    //             .and_then(|params| {
+    //                 if !self.expect_token(Token::Oper(Operator::RightParen){
+    //                     return Err(ParseError::NoRightParen);
+    //                 }
+    //                  Ok(ast::FuncDecl {
+    //         typ: t,
+    //         fn_name: s,
+    //         params: params,
+    //     })
+    // }
+
+    fn parse_func_body() {}
+
     fn parse_param_list(&mut self) -> ParseResult<Vec<ast::Param>> {
         let mut list: Vec<ast::Param> = Vec::new();
-        match self.parse_fn_param() {
-            Ok(Some(p)) => list.push(p),
-            Err(e) => return Err(e),
-        }
-        if self.expect_token(Token::Aide(Aides::Comma)) {
-            match self.parse_param_list() {
-                Ok(mut i) => list.append(&mut i),
-                Err(e) => return Err(e),
-            }
-        }
+        list.push(self.parse_fn_param()?);
+        self.expect_token(Token::Aide(Aides::Comma))?;
+        list.append(&mut self.parse_param_list()?);
         Ok(list)
     }
 
-    fn parse_fn_param(&mut self) -> ParseResult<Option<ast::Param>> {
+    fn parse_fn_param(&mut self) -> ParseResult<ast::Param> {
         self.parse_type().and_then(|t| {
             self.parse_identifier()
                 .and_then(|s| Ok(ast::Param { ident: s, typ: t }))
@@ -119,21 +133,25 @@ impl<L: lexer> Parser<L> {
     fn parse_var_define(&mut self) -> ParseResult<ast::ValueSepc> {
         self.parse_type().and_then(|t| {
             self.parse_variable_list().and_then(|idents| {
-                if self.expect_token(Token::Aide(Aides::Semicolon)) {
-                    Ok(ast::ValueSepc {
-                        names: idents,
-                        typ: t,
-                    })
-                } else {
-                    Err(ParseError::NoSemicolon)
-                }
+                self.expect_token(Token::Aide(Aides::Semicolon))?;
+                Ok(ast::ValueSepc {
+                    names: idents,
+                    typ: t,
+                })
             })
         })
     }
 
-    fn expect_token(&mut self, t: Token) -> bool {
+    fn expect_token(&mut self, t: Token) -> ParseResult<()> {
         if self.tok == t {
             self.next();
+            return Ok(());
+        }
+        Err(ParseError::Expect(t))
+    }
+
+    fn match_token(&mut self, t: Token) -> bool {
+        if self.tok == t {
             return true;
         }
         false
@@ -141,16 +159,14 @@ impl<L: lexer> Parser<L> {
 
     fn parse_variable_list(&mut self) -> ParseResult<Vec<ast::Ident>> {
         let mut list: Vec<ast::Ident> = Vec::new();
-        match self.parse_identifier() {
-            Ok(s) => list.push(ast::Ident { name: s }),
-            Err(e) => return Err(e),
-        }
-        if self.expect_token(Token::Aide(Aides::Comma)) {
-            match self.parse_variable_list() {
-                Ok(mut i) => list.append(&mut i),
-                Err(e) => return Err(e),
-            }
-        }
+
+        list.push(ast::Ident {
+            name: self.parse_identifier()?,
+        });
+        self.expect_token(Token::Aide(Aides::Comma)).and_then(|()| {
+            list.append(&mut self.parse_variable_list()?);
+            Ok(())
+        });
         Ok(list)
     }
 
