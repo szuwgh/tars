@@ -39,9 +39,12 @@ impl<L: lexer> Parser<L> {
                 Token::Eof => break,
                 Token::KeyWord(KeyWord::Var) => {
                     println!("parse var");
-                    if let Ok(value_spec) = self.parse_global_declaration() {
-                        println!("{:?}", value_spec);
-                        gro_decl.list.push(value_spec);
+                    match self.parse_global_declaration() {
+                        Ok(value_spec) => {
+                            println!("{:?}", value_spec);
+                            gro_decl.list.push(value_spec);
+                        }
+                        Err(e) => println!("{:?}", e),
                     }
                 }
                 Token::KeyWord(KeyWord::Fn) => {
@@ -51,7 +54,7 @@ impl<L: lexer> Parser<L> {
                         gro_decl.list.push(value_spec);
                     }
                 }
-                _ => {}
+                _ => break,
             }
         }
         Err(ParseError::Eof)
@@ -151,7 +154,7 @@ mod tests {
     #[test]
     fn test_parser() {
         let s = "
-        var int a,b;";
+        var int a,c;";
         let mut lexer = DefaultLexer::new(s.as_bytes());
         let mut parser = Parser::new(lexer);
         parser.parse();
