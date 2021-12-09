@@ -86,6 +86,7 @@ impl<L: lexer> Parser<L> {
                 if !self.expect_token(Token::Oper(Operator::LeftParen)) {
                     return Err(ParseError::NoLeftBrace);
                 }
+                if 
 
                 Ok(ast::FuncDecl { typ: t, name: s })
             })
@@ -95,7 +96,7 @@ impl<L: lexer> Parser<L> {
     fn parse_param_list(&mut self) -> ParseResult<Vec<ast::Param>> {
         let mut list: Vec<ast::Param> = Vec::new();
         match self.parse_fn_param() {
-            Ok(s) => list.push(ast::Ident { name: s }),
+            Ok(Some(p)) => list.push(p),
             Err(e) => return Err(e),
         }
         if self.expect_token(Token::Aide(Aides::Comma)) {
@@ -107,7 +108,12 @@ impl<L: lexer> Parser<L> {
         Ok(list)
     }
 
-    fn parse_fn_param(&mut self) -> ParseResult<ast::Param> {}
+    fn parse_fn_param(&mut self) -> ParseResult<Option<ast::Param>> {
+        self.parse_type().and_then(|t| {
+            self.parse_identifier()
+                .and_then(|s| Ok(ast::Param { ident: s, typ: t }))
+        })
+    }
 
     // variable_decl ::= type {'*'} id { ',' {'*'} id } ';'
     fn parse_var_define(&mut self) -> ParseResult<ast::ValueSepc> {
