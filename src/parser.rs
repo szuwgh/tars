@@ -5,6 +5,7 @@ use crate::lexer::Aides;
 use crate::lexer::DefaultLexer;
 use crate::lexer::KeyWord;
 use crate::lexer::LexResult;
+use crate::lexer::Operator;
 use crate::lexer::Token;
 pub type ParseResult<T> = Result<T, ParseError>;
 
@@ -13,6 +14,8 @@ pub enum ParseError {
     Eof,
     NoFoundType,
     NoFoundIdent,
+    NoSemicolon,
+    NoLeftBrace,
 }
 
 struct Parser<L: lexer> {
@@ -72,26 +75,32 @@ impl<L: lexer> Parser<L> {
         Err(ParseError::Eof)
     }
 
-    fn parse_function_define(&mut self) {
+    //function_define ::= type id (param) { func body }
+    fn parse_function_define(&mut self) -> ParseResult<ast::FuncDecl> {
         self.parse_type().and_then(|t| {
-            self.parse_identifier()
-                .and_then(|s| Ok(ast::FuncDecl { typ: t, name: s }))
-        });
+            self.parse_identifier().and_then(|s| {
+                if !self.expect_token(Token::Oper(Operator::LeftBrace)) {
+                    return Err(ParseError::NoLeftBrace);
+                }
+                Ok(ast::FuncDecl { typ: t, name: s })
+            })
+        })
     }
 
     // variable_decl ::= type {'*'} id { ',' {'*'} id } ';'
     fn parse_var_define(&mut self) -> ParseResult<ast::ValueSepc> {
-        if let Ok(t) = self.parse_type() {
-            if let Ok(idents) = self.parse_variable_list() {
+        self.parse_type().and_then(|t| {
+            self.parse_variable_list().and_then(|idents| {
                 if self.expect_token(Token::Aide(Aides::Semicolon)) {
-                    return Ok(ast::ValueSepc {
+                    Ok(ast::ValueSepc {
                         names: idents,
                         typ: t,
-                    });
+                    })
+                } else {
+                    Err(ParseError::NoSemicolon)
                 }
-            }
-        }
-        Err(ParseError::Eof)
+            })
+        })
     }
 
     fn expect_token(&mut self, t: Token) -> bool {
@@ -104,12 +113,14 @@ impl<L: lexer> Parser<L> {
 
     fn parse_variable_list(&mut self) -> ParseResult<Vec<ast::Ident>> {
         let mut list: Vec<ast::Ident> = Vec::new();
-        if let Ok(s) = self.parse_identifier() {
-            list.push(ast::Ident { name: s });
+        match self.parse_identifier() {
+            Ok(s) => list.push(ast::Ident { name: s }),
+            Err(e) => return Err(e),
         }
         if self.expect_token(Token::Aide(Aides::Comma)) {
-            if let Ok(mut i) = self.parse_variable_list() {
-                list.append(&mut i);
+            match self.parse_variable_list() {
+                Ok(mut i) => list.append(&mut i),
+                Err(e) => return Err(e),
             }
         }
         Ok(list)
@@ -120,7 +131,7 @@ impl<L: lexer> Parser<L> {
             self.next();
             return Ok(s);
         }
-        None+
+        Err(ParseError::NoFoundIdent)
     }
 
     fn parse_type(&mut self) -> ParseResult<KeyWord> {
@@ -130,7 +141,7 @@ impl<L: lexer> Parser<L> {
                 return Ok(k);
             }
         }
-        Err(ParseError::Eof)
+        Err(ParseError::NoFoundType)
     }
 }
 
@@ -140,7 +151,7 @@ mod tests {
     #[test]
     fn test_parser() {
         let s = "
-        int a,b;";
+        var int a,b;";
         let mut lexer = DefaultLexer::new(s.as_bytes());
         let mut parser = Parser::new(lexer);
         parser.parse();

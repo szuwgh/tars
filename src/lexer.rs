@@ -96,6 +96,10 @@ pub enum Operator {
     RightArrow,    // ->
     LeftArrow,     // <-
     Question,      // ?
+    LeftBrace,     // {
+    RightBrace,    // {
+    LeftBracket,   // [
+    RightBracket,  // ]
 }
 
 pub trait lexer {
@@ -131,6 +135,10 @@ impl<R: Read> lexer for DefaultLexer<R> {
                 b'<' => return self.parse_less(),
                 b'!' => return self.parse_excl(),
                 b'?' => return Ok(Token::Oper(Operator::Question)),
+                b'{' => return Ok(Token::Oper(Operator::LeftBrace)),
+                b'}' => return Ok(Token::Oper(Operator::RightBrace)),
+                b'[' => return Ok(Token::Oper(Operator::LeftBracket)),
+                b']' => return Ok(Token::Oper(Operator::RightBracket)),
                 _ => {
                     if c.is_ascii_alphabetic() || c == b'_' {
                         return self.parse_varorkeyword(c);
