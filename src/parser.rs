@@ -20,7 +20,6 @@ pub enum ParseError {
 struct Parser<L: lexer> {
     lex: L,
     tok: Token,
-    //err_log
 }
 
 impl<L: lexer> Parser<L> {
@@ -48,9 +47,11 @@ impl<L: lexer> Parser<L> {
                 }
                 Token::KeyWord(KeyWord::Fn) => {
                     println!("parse fn");
-                    if let Ok(fn_spec) = self.parse_global_declaration() {
-                        println!("{:?}", fn_spec);
-                        gro_decl.list.push(fn_spec);
+                    match self.parse_function_declaration() {
+                        Ok(fn_spec) => {
+                            println!("{:?}", fn_spec);
+                        }
+                        Err(e) => println!("{:?}", e),
                     }
                 }
                 _ => break,
@@ -74,7 +75,7 @@ impl<L: lexer> Parser<L> {
 
     fn parse_function_declaration(&mut self) -> ParseResult<ast::FuncDecl> {
         self.next();
-        Err(ParseError::Eof)
+        return self.parse_function_define();
     }
 
     //function_define ::= type id (param) { func body }
@@ -98,27 +99,15 @@ impl<L: lexer> Parser<L> {
         })
     }
 
-    //  let params: Vec<ast::Param>;
-    //     if !self.match_token(Token::Oper(Operator::RightParen)) {
-    //         self.parse_param_list()
-    //             .and_then(|params| {
-    //                 if !self.expect_token(Token::Oper(Operator::RightParen){
-    //                     return Err(ParseError::NoRightParen);
-    //                 }
-    //                  Ok(ast::FuncDecl {
-    //         typ: t,
-    //         fn_name: s,
-    //         params: params,
-    //     })
-    // }
-
     fn parse_func_body() {}
 
     fn parse_param_list(&mut self) -> ParseResult<Vec<ast::Param>> {
         let mut list: Vec<ast::Param> = Vec::new();
         list.push(self.parse_fn_param()?);
-        self.expect_token(Token::Aide(Aides::Comma))?;
-        list.append(&mut self.parse_param_list()?);
+        match self.expect_token(Token::Aide(Aides::Comma)) {
+            Ok(()) => list.append(&mut self.parse_param_list()?),
+            Err(_) => (),
+        }
         Ok(list)
     }
 
@@ -163,10 +152,10 @@ impl<L: lexer> Parser<L> {
         list.push(ast::Ident {
             name: self.parse_identifier()?,
         });
-        self.expect_token(Token::Aide(Aides::Comma)).and_then(|()| {
-            list.append(&mut self.parse_variable_list()?);
-            Ok(())
-        });
+        match self.expect_token(Token::Aide(Aides::Comma)) {
+            Ok(()) => list.append(&mut self.parse_variable_list()?),
+            Err(_) => (),
+        }
         Ok(list)
     }
 
@@ -195,7 +184,9 @@ mod tests {
     #[test]
     fn test_parser() {
         let s = "
-        var int a,c;";
+        var int a,c;
+        fn int b(int d,int e){}
+        ";
         let mut lexer = DefaultLexer::new(s.as_bytes());
         let mut parser = Parser::new(lexer);
         parser.parse();

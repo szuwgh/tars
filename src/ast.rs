@@ -7,12 +7,14 @@ pub struct GlobalDecl {
     pub list: Vec<ValueSepc>,
 }
 
+#[derive(Debug)]
 pub struct FuncDecl {
     pub typ: KeyWord,
     pub fn_name: String,
     pub params: Vec<Param>,
 }
 
+#[derive(Debug)]
 pub struct Param {
     pub ident: String,
     pub typ: KeyWord,
