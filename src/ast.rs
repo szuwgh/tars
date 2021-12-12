@@ -1,5 +1,6 @@
 use crate::lexer::KeyWord;
 use crate::lexer::Token;
+use std::fmt::Display;
 
 pub struct AST {}
 
@@ -14,6 +15,10 @@ pub struct FuncDecl {
     pub params: Vec<Param>,
 }
 
+pub struct FuncBody<T: Stmt> {
+    list: Vec<T>,
+}
+
 #[derive(Debug)]
 pub struct Param {
     pub ident: String,
@@ -25,8 +30,18 @@ pub struct Ident {
     pub name: String,
 }
 
+pub trait Stmt {
+    // fn test(&self);
+}
+
 #[derive(Debug)]
 pub struct ValueSepc {
     pub names: Vec<Ident>,
     pub typ: KeyWord,
 }
+
+impl Stmt for ValueSepc {
+    //fn test(&self) {}
+}
+
+impl<T: Display> Stmt for T {}

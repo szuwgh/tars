@@ -97,7 +97,7 @@ pub enum Operator {
     LeftArrow,     // <-
     Question,      // ?
     LeftBrace,     // {
-    RightBrace,    // {
+    RightBrace,    // }
     LeftBracket,   // [
     RightBracket,  // ]
     LeftParen,     // (

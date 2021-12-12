@@ -1,4 +1,5 @@
 use crate::ast;
+use crate::ast::Stmt;
 use crate::ast::AST;
 use crate::lexer::lexer;
 use crate::lexer::Aides;
@@ -7,6 +8,7 @@ use crate::lexer::KeyWord;
 use crate::lexer::LexResult;
 use crate::lexer::Operator;
 use crate::lexer::Token;
+
 pub type ParseResult<T> = Result<T, ParseError>;
 
 #[derive(Debug)]
@@ -69,13 +71,34 @@ impl<L: lexer> Parser<L> {
     }
 
     fn parse_global_declaration(&mut self) -> ParseResult<ast::ValueSepc> {
+        return self.parse_declaration();
+    }
+
+    fn parse_declaration(&mut self) -> ParseResult<ast::ValueSepc> {
         self.next();
         return self.parse_var_define();
     }
 
+    // fn parse_gen_decl<F:>(t: Token, f: F) {}
+
     fn parse_function_declaration(&mut self) -> ParseResult<ast::FuncDecl> {
         self.next();
         return self.parse_function_define();
+    }
+
+    fn parse_stmt_list(&mut self) -> ParseResult<Vec<Box<dyn ast::Stmt>>> {
+        let mut list: Vec<Box<dyn ast::Stmt>> = Vec::new();
+        while self.tok != Token::Oper(Operator::RightBrace) && self.tok != Token::Eof {
+            list.push(self.parse_stmt()?);
+        }
+        Ok(list)
+    }
+
+    fn parse_stmt(&mut self) -> ParseResult<Box<dyn ast::Stmt>> {
+        return match self.tok {
+            Token::KeyWord(KeyWord::Var) => Ok(Box::new(self.parse_declaration()?)),
+            _ => Err(ParseError::NoFoundIdent),
+        };
     }
 
     //function_define ::= type id (param) { func body }
@@ -89,6 +112,7 @@ impl<L: lexer> Parser<L> {
                 }
                 self.expect_token(Token::Oper(Operator::RightParen))?;
                 self.expect_token(Token::Oper(Operator::LeftBrace))?;
+                self.parse_func_body();
                 self.expect_token(Token::Oper(Operator::RightBrace))?;
                 Ok(ast::FuncDecl {
                     typ: t,
@@ -99,7 +123,7 @@ impl<L: lexer> Parser<L> {
         })
     }
 
-    fn parse_func_body() {}
+    fn parse_func_body(&mut self) {}
 
     fn parse_param_list(&mut self) -> ParseResult<Vec<ast::Param>> {
         let mut list: Vec<ast::Param> = Vec::new();
