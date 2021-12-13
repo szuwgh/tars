@@ -1,6 +1,7 @@
 use crate::lexer::KeyWord;
 use crate::lexer::Token;
-use std::fmt::Display;
+use std::fmt;
+use std::fmt::Debug;
 
 pub struct AST {}
 
@@ -13,10 +14,17 @@ pub struct FuncDecl {
     pub typ: KeyWord,
     pub fn_name: String,
     pub params: Vec<Param>,
+    pub body: FuncBody,
 }
 
-pub struct FuncBody<T: Stmt> {
-    list: Vec<T>,
+pub struct FuncBody {
+    pub list: Vec<Box<dyn Stmt>>,
+}
+
+impl Debug for FuncBody {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "")
+    }
 }
 
 #[derive(Debug)]
@@ -43,5 +51,3 @@ pub struct ValueSepc {
 impl Stmt for ValueSepc {
     //fn test(&self) {}
 }
-
-impl<T: Display> Stmt for T {}

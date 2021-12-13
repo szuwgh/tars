@@ -112,18 +112,23 @@ impl<L: lexer> Parser<L> {
                 }
                 self.expect_token(Token::Oper(Operator::RightParen))?;
                 self.expect_token(Token::Oper(Operator::LeftBrace))?;
-                self.parse_func_body();
+                let body = self.parse_func_body()?;
                 self.expect_token(Token::Oper(Operator::RightBrace))?;
                 Ok(ast::FuncDecl {
                     typ: t,
                     fn_name: s,
                     params: params,
+                    body: body,
                 })
             })
         })
     }
 
-    fn parse_func_body(&mut self) {}
+    fn parse_func_body(&mut self) -> ParseResult<ast::FuncBody> {
+        Ok(ast::FuncBody {
+            list: self.parse_stmt_list()?,
+        })
+    }
 
     fn parse_param_list(&mut self) -> ParseResult<Vec<ast::Param>> {
         let mut list: Vec<ast::Param> = Vec::new();
@@ -209,7 +214,9 @@ mod tests {
     fn test_parser() {
         let s = "
         var int a,c;
-        fn int b(int d,int e){}
+        fn int b(int d,int e){
+            var int f;
+        }
         ";
         let mut lexer = DefaultLexer::new(s.as_bytes());
         let mut parser = Parser::new(lexer);
