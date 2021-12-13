@@ -10,20 +10,23 @@ pub struct GlobalDecl {
 }
 
 #[derive(Debug)]
-pub struct FuncDecl {
+pub struct FuncDecl<T: Stmt + Debug> {
     pub typ: KeyWord,
     pub fn_name: String,
     pub params: Vec<Param>,
-    pub body: FuncBody,
+    pub body: FuncBody<T>,
 }
 
-pub struct FuncBody {
-    pub list: Vec<Box<dyn Stmt>>,
+pub struct FuncBody<T: Stmt + Debug> {
+    pub list: Vec<T>,
 }
 
-impl Debug for FuncBody {
+impl<T: Stmt + Debug> Debug for FuncBody<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "")
+        for x in self.list.iter() {
+            x.fmt(f)?;
+        }
+        Ok(())
     }
 }
 
@@ -38,8 +41,27 @@ pub struct Ident {
     pub name: String,
 }
 
+pub enum StmtNode {
+    ValueSepc(ValueSepc),
+}
+
+impl Stmt for StmtNode {
+    fn stmt_node(&self) {
+        println!("ValueSepc");
+    }
+}
+
+impl Debug for StmtNode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        return match self {
+            StmtNode::ValueSepc(v) => v.fmt(f),
+            _ => Err(fmt::Error {}),
+        };
+    }
+}
+
 pub trait Stmt {
-    // fn test(&self);
+    fn stmt_node(&self);
 }
 
 #[derive(Debug)]
@@ -49,5 +71,7 @@ pub struct ValueSepc {
 }
 
 impl Stmt for ValueSepc {
-    //fn test(&self) {}
+    fn stmt_node(&self) {
+        println!("ValueSepc");
+    }
 }

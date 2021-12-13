@@ -1,5 +1,6 @@
 use crate::ast;
 use crate::ast::Stmt;
+use crate::ast::StmtNode;
 use crate::ast::AST;
 use crate::lexer::lexer;
 use crate::lexer::Aides;
@@ -81,28 +82,28 @@ impl<L: lexer> Parser<L> {
 
     // fn parse_gen_decl<F:>(t: Token, f: F) {}
 
-    fn parse_function_declaration(&mut self) -> ParseResult<ast::FuncDecl> {
+    fn parse_function_declaration(&mut self) -> ParseResult<ast::FuncDecl<StmtNode>> {
         self.next();
         return self.parse_function_define();
     }
 
-    fn parse_stmt_list(&mut self) -> ParseResult<Vec<Box<dyn ast::Stmt>>> {
-        let mut list: Vec<Box<dyn ast::Stmt>> = Vec::new();
+    fn parse_stmt_list(&mut self) -> ParseResult<Vec<StmtNode>> {
+        let mut list: Vec<StmtNode> = Vec::new();
         while self.tok != Token::Oper(Operator::RightBrace) && self.tok != Token::Eof {
             list.push(self.parse_stmt()?);
         }
         Ok(list)
     }
 
-    fn parse_stmt(&mut self) -> ParseResult<Box<dyn ast::Stmt>> {
+    fn parse_stmt(&mut self) -> ParseResult<StmtNode> {
         return match self.tok {
-            Token::KeyWord(KeyWord::Var) => Ok(Box::new(self.parse_declaration()?)),
+            Token::KeyWord(KeyWord::Var) => Ok(StmtNode::ValueSepc(self.parse_declaration()?)),
             _ => Err(ParseError::NoFoundIdent),
         };
     }
 
     //function_define ::= type id (param) { func body }
-    fn parse_function_define(&mut self) -> ParseResult<ast::FuncDecl> {
+    fn parse_function_define(&mut self) -> ParseResult<ast::FuncDecl<StmtNode>> {
         self.parse_type().and_then(|t| {
             self.parse_identifier().and_then(|s| {
                 self.expect_token(Token::Oper(Operator::LeftParen))?;
@@ -124,7 +125,7 @@ impl<L: lexer> Parser<L> {
         })
     }
 
-    fn parse_func_body(&mut self) -> ParseResult<ast::FuncBody> {
+    fn parse_func_body(&mut self) -> ParseResult<ast::FuncBody<StmtNode>> {
         Ok(ast::FuncBody {
             list: self.parse_stmt_list()?,
         })
