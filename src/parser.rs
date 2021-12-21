@@ -17,6 +17,7 @@ pub enum ParseError {
     Eof,
     NoFoundType,
     NoFoundIdent,
+    NoStmt,
     Expect(Token),
 }
 
@@ -96,9 +97,92 @@ impl<L: lexer> Parser<L> {
     }
 
     fn parse_stmt(&mut self) -> ParseResult<StmtNode> {
-        return match self.tok {
+        return match &self.tok {
             Token::KeyWord(KeyWord::Var) => Ok(StmtNode::ValueSepc(self.parse_declaration()?)),
-            _ => Err(ParseError::NoFoundIdent),
+            Token::Ident(s) => self.parse_simple_stmt(),
+            _ => Err(ParseError::NoStmt),
+        };
+    }
+
+    fn parse_simple_stmt(&mut self) -> ParseResult<StmtNode> {
+        let x = self.parse_lhs()?;
+        return match self.tok {
+            Token::Oper(Operator::Assign) => {
+                let op = self.tok.clone();
+                self.next();
+                let y = self.parse_rhs()?;
+                self.expect_token(Token::Aide(Aides::Semicolon))?;
+                let stmt = ast::AssignStmt { x: x, op: op, y: y };
+                Ok(StmtNode::AssignStmt(stmt))
+            }
+            _ => Err(ParseError::NoStmt),
+        };
+    }
+
+    fn parse_lhs(&mut self) -> ParseResult<ast::ExprNode> {
+        self.parse_expr()
+    }
+
+    fn parse_rhs(&mut self) -> ParseResult<ast::ExprNode> {
+        self.parse_expr()
+    }
+
+    fn parse_expr_list(&mut self) -> ParseResult<Vec<ast::ExprNode>> {
+        Err(ParseError::NoFoundType)
+    }
+
+    fn parse_expr(&mut self) -> ParseResult<ast::ExprNode> {
+        let mut x = self.parse_binary_expr()?;
+        while self.tok == Token::Oper(Operator::Add) || self.tok == Token::Oper(Operator::Sub) {
+            let op = self.tok.clone();
+            let y = self.parse_binary_expr()?;
+            x = ast::ExprNode::BinaryExpr(ast::BinaryExpr {
+                x: Box::new(x),
+                op: op,
+                y: Box::new(y),
+            });
+        }
+        Ok(x)
+    }
+
+    fn parse_binary_expr(&mut self) -> ParseResult<ast::ExprNode> {
+        let mut x = self.parse_unary_expr()?;
+        while self.tok == Token::Oper(Operator::Star) {
+            let op = self.tok.clone();
+            self.next();
+            let y = self.parse_binary_expr()?;
+            x = ast::ExprNode::BinaryExpr(ast::BinaryExpr {
+                x: Box::new(x),
+                op: op,
+                y: Box::new(y),
+            });
+        }
+        Ok(x)
+    }
+
+    fn parse_unary_expr(&mut self) -> ParseResult<ast::ExprNode> {
+        return match self.tok {
+            Token::Oper(Operator::Add) | Token::Oper(Operator::Sub) => {
+                let token = self.tok.clone();
+                self.next();
+                let x = self.parse_unary_expr()?;
+                return Ok(ast::ExprNode::UnaryExpr(ast::UnaryExpr {
+                    op: token,
+                    x: Box::new(x),
+                }));
+            }
+            _ => self.parse_primary_expr(),
+        };
+    }
+
+    fn parse_primary_expr(&mut self) -> ParseResult<ast::ExprNode> {
+        self.parse_operand()
+    }
+
+    fn parse_operand(&mut self) -> ParseResult<ast::ExprNode> {
+        return match &self.tok {
+            Token::Ident(_) => Ok(ast::ExprNode::IdentExpr(self.parse_identifier()?)),
+            _ => Err(ParseError::NoFoundType),
         };
     }
 
@@ -179,9 +263,7 @@ impl<L: lexer> Parser<L> {
     fn parse_variable_list(&mut self) -> ParseResult<Vec<ast::Ident>> {
         let mut list: Vec<ast::Ident> = Vec::new();
 
-        list.push(ast::Ident {
-            name: self.parse_identifier()?,
-        });
+        list.push(self.parse_identifier()?);
         match self.expect_token(Token::Aide(Aides::Comma)) {
             Ok(()) => list.append(&mut self.parse_variable_list()?),
             Err(_) => (),
@@ -189,10 +271,10 @@ impl<L: lexer> Parser<L> {
         Ok(list)
     }
 
-    fn parse_identifier(&mut self) -> ParseResult<String> {
+    fn parse_identifier(&mut self) -> ParseResult<ast::Ident> {
         if let Token::Ident(s) = self.tok.clone() {
             self.next();
-            return Ok(s);
+            return Ok(ast::Ident { name: s });
         }
         Err(ParseError::NoFoundIdent)
     }
@@ -217,6 +299,7 @@ mod tests {
         var int a,c;
         fn int b(int d,int e){
             var int f;
+            f = a + b *c + e;
         }
         ";
         let mut lexer = DefaultLexer::new(s.as_bytes());

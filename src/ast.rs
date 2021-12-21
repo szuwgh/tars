@@ -12,7 +12,7 @@ pub struct GlobalDecl {
 #[derive(Debug)]
 pub struct FuncDecl<T: Stmt + Debug> {
     pub typ: KeyWord,
-    pub fn_name: String,
+    pub fn_name: Ident,
     pub params: Vec<Param>,
     pub body: FuncBody<T>,
 }
@@ -32,7 +32,7 @@ impl<T: Stmt + Debug> Debug for FuncBody<T> {
 
 #[derive(Debug)]
 pub struct Param {
-    pub ident: String,
+    pub ident: Ident,
     pub typ: KeyWord,
 }
 
@@ -41,8 +41,20 @@ pub struct Ident {
     pub name: String,
 }
 
+#[derive(Debug)]
+pub struct AssignStmt {
+    pub x: ExprNode,
+    pub op: Token,
+    pub y: ExprNode,
+}
+
+pub trait Stmt {
+    fn stmt_node(&self);
+}
+
 pub enum StmtNode {
     ValueSepc(ValueSepc),
+    AssignStmt(AssignStmt),
 }
 
 impl Stmt for StmtNode {
@@ -60,8 +72,28 @@ impl Debug for StmtNode {
     }
 }
 
-pub trait Stmt {
-    fn stmt_node(&self);
+pub trait Expr {}
+
+#[derive(Debug)]
+pub enum ExprNode {
+    IdentExpr(Ident),
+    UnaryExpr(UnaryExpr),
+    BinaryExpr(BinaryExpr),
+}
+
+impl Expr for ExprNode {}
+
+#[derive(Debug)]
+pub struct BinaryExpr {
+    pub x: Box<ExprNode>,
+    pub op: Token,
+    pub y: Box<ExprNode>,
+}
+
+#[derive(Debug)]
+pub struct UnaryExpr {
+    pub op: Token,
+    pub x: Box<ExprNode>,
 }
 
 #[derive(Debug)]
