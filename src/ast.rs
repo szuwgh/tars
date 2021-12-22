@@ -52,6 +52,13 @@ pub trait Stmt {
     fn stmt_node(&self);
 }
 
+impl Debug for Stmt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
 pub enum StmtNode {
     ValueSepc(ValueSepc),
     AssignStmt(AssignStmt),
@@ -60,15 +67,6 @@ pub enum StmtNode {
 impl Stmt for StmtNode {
     fn stmt_node(&self) {
         println!("ValueSepc");
-    }
-}
-
-impl Debug for StmtNode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        return match self {
-            StmtNode::ValueSepc(v) => v.fmt(f),
-            _ => Err(fmt::Error {}),
-        };
     }
 }
 
