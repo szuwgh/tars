@@ -57,6 +57,19 @@ pub enum Token {
     Eof,
 }
 
+impl Token {
+    pub fn level(&self) -> u32 {
+        match self {
+            Token::Oper(Operator) => match Operator {
+                Operator::Add | Operator::Sub => 2,
+                Operator::Star | Operator::Div => 3,
+                _ => 0,
+            },
+            _ => 0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Aides {
     Dot,       // .

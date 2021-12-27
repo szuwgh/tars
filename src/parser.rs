@@ -132,25 +132,15 @@ impl<L: lexer> Parser<L> {
     }
 
     fn parse_expr(&mut self) -> ParseResult<ast::ExprNode> {
-        let mut x = self.parse_binary_expr()?;
-        while self.tok == Token::Oper(Operator::Add) || self.tok == Token::Oper(Operator::Sub) {
-            let op = self.tok.clone();
-            let y = self.parse_binary_expr()?;
-            x = ast::ExprNode::BinaryExpr(ast::BinaryExpr {
-                x: Box::new(x),
-                op: op,
-                y: Box::new(y),
-            });
-        }
-        Ok(x)
+        self.parse_binary_expr(1)
     }
 
-    fn parse_binary_expr(&mut self) -> ParseResult<ast::ExprNode> {
+    fn parse_binary_expr(&mut self, level: u32) -> ParseResult<ast::ExprNode> {
         let mut x = self.parse_unary_expr()?;
-        while self.tok == Token::Oper(Operator::Star) {
+        while self.tok.level() >= level {
             let op = self.tok.clone();
             self.next();
-            let y = self.parse_binary_expr()?;
+            let y = self.parse_binary_expr(op.level())?;
             x = ast::ExprNode::BinaryExpr(ast::BinaryExpr {
                 x: Box::new(x),
                 op: op,
@@ -182,8 +172,18 @@ impl<L: lexer> Parser<L> {
     fn parse_operand(&mut self) -> ParseResult<ast::ExprNode> {
         return match &self.tok {
             Token::Ident(_) => Ok(ast::ExprNode::IdentExpr(self.parse_identifier()?)),
+            Token::Oper(Operator::LeftParen) => {
+                self.next();
+                let x = self.parse_paren_expr()?;
+                self.expect_token(Token::Oper(Operator::RightParen))?;
+                Ok(ast::ExprNode::ParenExpr(ast::ParenExpr { x: Box::new(x) }))
+            }
             _ => Err(ParseError::NoFoundType),
         };
+    }
+
+    fn parse_paren_expr(&mut self) -> ParseResult<ast::ExprNode> {
+        self.parse_expr()
     }
 
     //function_define ::= type id (param) { func body }
@@ -299,7 +299,7 @@ mod tests {
         var int a,c;
         fn int b(int d,int e){
             var int f;
-            f = a + b *c + e;
+            f = a + b * (c + e);
         }
         ";
         let mut lexer = DefaultLexer::new(s.as_bytes());

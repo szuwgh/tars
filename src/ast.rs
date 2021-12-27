@@ -77,6 +77,7 @@ pub enum ExprNode {
     IdentExpr(Ident),
     UnaryExpr(UnaryExpr),
     BinaryExpr(BinaryExpr),
+    ParenExpr(ParenExpr),
 }
 
 impl Expr for ExprNode {}
@@ -91,6 +92,11 @@ pub struct BinaryExpr {
 #[derive(Debug)]
 pub struct UnaryExpr {
     pub op: Token,
+    pub x: Box<ExprNode>,
+}
+
+#[derive(Debug)]
+pub struct ParenExpr {
     pub x: Box<ExprNode>,
 }
 
