@@ -1,11 +1,11 @@
 mod ast;
 mod lexer;
+mod llvm;
 mod parser;
 mod vm;
 use lexer::DefaultLexer;
 use std::env;
 use std::fs::OpenOptions;
-extern crate llvm_sys as llvm;
 
 fn open(pathname: *mut u8) {}
 
