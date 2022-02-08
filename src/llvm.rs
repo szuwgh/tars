@@ -56,3 +56,7 @@ unsafe fn codegen(input: String) {
     llvm::core::LLVMDisposeModule(module);
     llvm::core::LLVMContextDispose(context);
 }
+
+unsafe fn codegen_expr(){
+    
+}
