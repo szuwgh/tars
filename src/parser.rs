@@ -297,7 +297,7 @@ mod tests {
     fn test_parser() {
         let s = "
         var int a,c;
-        fn int b(int d,int e){
+        fn int b(int d,int e){ 
             var int f;
             f = a + b * (c + e);
         }

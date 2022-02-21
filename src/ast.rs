@@ -3,7 +3,9 @@ use crate::lexer::Token;
 use std::fmt;
 use std::fmt::Debug;
 
-pub struct AST {}
+pub struct AST {
+    
+}
 
 pub struct GlobalDecl {
     pub list: Vec<ValueSepc>,

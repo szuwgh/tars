@@ -57,6 +57,32 @@ unsafe fn codegen(input: String) {
     llvm::core::LLVMContextDispose(context);
 }
 
-unsafe fn codegen_expr(){
-    
+unsafe fn codegen_expr() {}
+
+mod tests {
+    use super::*;
+    use std::fs::OpenOptions;
+    #[test]
+    fn test_parser() {
+        let s = "
+        var int a,c;
+        fn int b(int d,int e){ 
+            var int f;
+            f = a + b * (c + e);
+        }
+        ";
+        let mut lexer = DefaultLexer::new(s.as_bytes());
+        let mut parser = Parser::new(lexer);
+        parser.parse_func_body();
+        // loop {
+        //     let m = lexer.lex();
+        //     match m {
+        //         Ok(c) => println!("{:?}", c),
+        //         Err(e) => {
+        //             println!("{:?}", e);
+        //             break;
+        //         }
+        //     }
+        // }
+    }
 }
